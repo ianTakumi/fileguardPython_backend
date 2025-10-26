@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from .models import File
 from .serializers import FileSerializer
 from utils.utils import encrypt_file, decrypt_file
-
+from rest_framework.decorators import action
 class FileViewSet(viewsets.ModelViewSet):
     serializer_class = FileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -26,3 +26,17 @@ class FileViewSet(viewsets.ModelViewSet):
         response = HttpResponse(decrypted_content, content_type='application/octet-stream')
         response['Content-Disposition'] = f'attachment; filename="{instance.name}"'
         return response
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='count-all',
+        permission_classes=[permissions.AllowAny] 
+    )
+    def count_all_files(self, request):
+        """Return total number of files in the system (publicly accessible)"""
+        token = request.headers.get('Authorization')
+        print("🔐 Bearer Token:", token)  # 👈 This prints the full token to the console
+
+        count = File.objects.count()
+        return Response({'total_files': count}, status=status.HTTP_200_OK)

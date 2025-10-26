@@ -2,8 +2,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -109,7 +109,14 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------
-# 🪣 SUPABASE (optional environment variables)
+# 🪣 SUPABASE CONFIG
 # ---------------------------------------------------------------------
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+SUPABASE_URL = os.getenv('SUPABASE_URL', '')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', '')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', '')
+SUPABASE_DB_NAME = os.getenv('SUPABASE_DB_NAME', '')
+SUPABASE_DB_USER = os.getenv('SUPABASE_DB_USER', '')
+SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD', '')
+SUPABASE_DB_HOST = os.getenv('SUPABASE_DB_HOST', '')
+SUPABASE_PORT = os.getenv('SUPABASE_PORT', '5432')
+SUPABASE_PROJECT_URL = os.getenv("SUPABASE_PROJECT_URL", "https://xyzcompanyabc.supabase.co")
