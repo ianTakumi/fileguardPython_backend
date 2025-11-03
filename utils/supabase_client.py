@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()  # para mabasa yung .env file
 
-url: str = os.getenv("SUPABASE_URL")
+url: str = os.getenv("SUPABASE_PROJECT_URL")
 anon_key: str = os.getenv("SUPABASE_ANON_KEY")
 service_key: str = os.getenv("SUPABASE_SERVICE_KEY")
 
