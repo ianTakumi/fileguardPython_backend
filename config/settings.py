@@ -32,7 +32,8 @@ INSTALLED_APPS = [
     # Local Apps
     'AppUser',
     'files',
-    'contacts'
+    'contacts',
+    'subscriptions'
 ]
 
 # ---------------------------------------------------------------------
@@ -120,3 +121,11 @@ SUPABASE_DB_PASSWORD = os.getenv('SUPABASE_DB_PASSWORD', '')
 SUPABASE_DB_HOST = os.getenv('SUPABASE_DB_HOST', '')
 SUPABASE_PORT = os.getenv('SUPABASE_PORT', '5432')
 SUPABASE_PROJECT_URL = os.getenv("SUPABASE_PROJECT_URL", "https://xyzcompanyabc.supabase.co")
+
+# ---------------------------------------------------------------------
+# 🪣 PAYPAL CONFIG
+# ---------------------------------------------------------------------
+PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID', '')
+PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET', '')
+PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox') 
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
