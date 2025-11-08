@@ -136,41 +136,65 @@ class FileViewSet(viewsets.ModelViewSet):
             'isStarred': file.isStarred
         }, status=status.HTTP_200_OK)
 
-    # 🆕 Share file with another user
     @action(detail=True, methods=['post'], url_path='share', permission_classes=[permissions.AllowAny])
     def share_file(self, request, pk=None):
-        file = get_object_or_404(File, pk=pk)
-        shared_with_id = request.data.get('shared_with_id')
+        shared_with_email = request.data.get('shared_with_email')
         owner_id = request.data.get('owner_id')
         
-        if not shared_with_id:
-            return Response({'error': 'shared_with_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not shared_with_email:
+            return Response({'error': 'shared_with_email is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not owner_id:
             return Response({'error': 'owner_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if user owns the file
-        if str(file.user_id) != owner_id:
-            return Response({'error': 'You can only share files you own'}, status=status.HTTP_403_FORBIDDEN)
+        # Verify that the file exists and user owns it
+        try:
+            file = File.objects.get(id=pk, user_id=owner_id)
+        except File.DoesNotExist:
+            return Response({'error': 'File not found or you do not own this file'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Check if already shared
-        if FileShare.objects.filter(file=file, shared_with_id=shared_with_id).exists():
-            return Response({'error': 'File already shared with this user'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # 🆕 List users - it returns a list directly
+            users_list = supabase.auth.admin.list_users()
+            
+            print(f"Found {len(users_list)} users")  # Debug
+            print("Users:", users_list)  # Debug
+            
+            target_user = None
+            for user in users_list:  # Directly iterate over the list
+                print(f"Checking user: {user.email}")  # Debug
+                if user.email == shared_with_email:
+                    target_user = user
+                    break
+            
+            if not target_user:
+                return Response({'error': 'User with this email not found in Supabase Auth'}, status=status.HTTP_404_NOT_FOUND)
+            
+            shared_with_uuid = target_user.id
+            print(f"Found user ID: {shared_with_uuid}")  # Debug
+            
+            # Check if already shared
+            if FileShare.objects.filter(file=file, shared_with_id=shared_with_uuid).exists():
+                return Response({'error': 'File already shared with this user'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create share record
+            share = FileShare.objects.create(
+                file=file,
+                owner_id=owner_id,
+                shared_with_id=shared_with_uuid
+            )
+            
+            serializer = FileShareSerializer(share)
+            return Response({
+                'success': True,
+                'message': f'File shared successfully with {shared_with_email}',
+                'share': serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error details: {str(e)}")  # Debug
+            return Response({'error': f'Failed to find user: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # Create share record
-        share = FileShare.objects.create(
-            file=file,
-            owner_id=owner_id,
-            shared_with_id=shared_with_id
-        )
-        
-        serializer = FileShareSerializer(share)
-        return Response({
-            'success': True,
-            'message': f'File shared successfully with user {shared_with_id}',
-            'share': serializer.data
-        }, status=status.HTTP_201_CREATED)
-
     # 🆕 Get shared files for a user
     @action(detail=False, methods=['get'], url_path='shared-with-me', permission_classes=[permissions.AllowAny])
     def shared_with_me(self, request):
@@ -187,32 +211,50 @@ class FileViewSet(viewsets.ModelViewSet):
             'total_shared': len(serializer.data)
         }, status=status.HTTP_200_OK)
 
-    # 🆕 Unshare file
     @action(detail=True, methods=['post'], url_path='unshare', permission_classes=[permissions.AllowAny])
     def unshare_file(self, request, pk=None):
-        file = get_object_or_404(File, pk=pk)
-        shared_with_id = request.data.get('shared_with_id')
+        shared_with_email = request.data.get('shared_with_email')
         owner_id = request.data.get('owner_id')
         
-        if not shared_with_id:
-            return Response({'error': 'shared_with_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not shared_with_email:
+            return Response({'error': 'shared_with_email is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not owner_id:
             return Response({'error': 'owner_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if user owns the file
-        if str(file.user_id) != owner_id:
-            return Response({'error': 'You can only unshare files you own'}, status=status.HTTP_403_FORBIDDEN)
+        # Verify that the file exists and user owns it
+        try:
+            file = File.objects.get(id=pk, user_id=owner_id)
+        except File.DoesNotExist:
+            return Response({'error': 'File not found or you do not own this file'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Delete share record
-        share = get_object_or_404(FileShare, file=file, shared_with_id=shared_with_id)
-        share.delete()
-        
-        return Response({
-            'success': True,
-            'message': f'File unshared successfully with user {shared_with_id}'
-        }, status=status.HTTP_200_OK)
-
+        try:
+            # 🆕 Get user UUID from Supabase Auth by email
+            users_list = supabase.auth.admin.list_users()
+            
+            target_user = None
+            for user in users_list:  # Direct iteration over the list
+                if user.email == shared_with_email:
+                    target_user = user
+                    break
+            
+            if not target_user:
+                return Response({'error': 'User with this email not found in Supabase Auth'}, status=status.HTTP_404_NOT_FOUND)
+            
+            shared_with_uuid = target_user.id
+            
+            # Delete share record
+            share = get_object_or_404(FileShare, file=file, shared_with_id=shared_with_uuid)
+            share.delete()
+            
+            return Response({
+                'success': True,
+                'message': f'File unshared successfully with {shared_with_email}'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': f'Failed to find user: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     # 🆕 Update file privacy
     @action(detail=True, methods=['post'], url_path='set-privacy', permission_classes=[permissions.AllowAny])
     def set_privacy(self, request, pk=None):
