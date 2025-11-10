@@ -11,6 +11,8 @@ from django.db.models import Sum, Q
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 
+from collections import Counter
+
 class FileViewSet(viewsets.ModelViewSet):
     serializer_class = FileSerializer
     permission_classes = [permissions.AllowAny]
@@ -333,3 +335,37 @@ class FileViewSet(viewsets.ModelViewSet):
                 
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+  # 🆕 Get top 5 file types by extracting from filename
+    @action(detail=False, methods=['get'], url_path='top-file-types', permission_classes=[permissions.AllowAny])
+    def top_file_types(self, request):
+        try:
+            # Get all files
+            files = File.objects.all()
+            
+            # Extract file extensions from names
+            extensions = []
+            for file in files:
+                if file.name:
+                    # Get file extension using os.path.splitext
+                    _, ext = os.path.splitext(file.name)
+                    if ext:
+                        # Remove the dot and convert to lowercase
+                        ext = ext.lower().lstrip('.')
+                        extensions.append(ext if ext else 'no_extension')
+                    else:
+                        extensions.append('no_extension')
+                else:
+                    extensions.append('unknown')
+            
+            # Count occurrences and get top 5
+            extension_counter = Counter(extensions)
+            top_5 = dict(extension_counter.most_common(5))
+            
+            return Response(top_5, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to fetch top file types: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
